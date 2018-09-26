@@ -1,0 +1,55 @@
+<project name="Sudoku" default="dist" basedir=".">
+  <description>
+    Tool for creating and solving Sudoku puzzles and rating their difficulty.
+  </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="src"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+  <property name="lib" location="lib"/>
+
+  <target name="compile" description="compile the source">
+    <!-- Create the build directory -->
+    <mkdir dir="${build}"/>
+    <!-- Compile the Java code from ${src} into ${build} -->
+    <javac includeantruntime="false" srcdir="${src}" destdir="${build}">
+      <classpath>
+        <fileset dir="${lib}">
+          <include name="**/*.jar" />
+        </fileset>
+      </classpath>
+    </javac>
+  </target>
+
+  <target name="dist" depends="compile" description="generate the distribution">
+    <!-- Create the distribution directory -->
+    <mkdir dir="${dist}"/>
+
+    <!-- Pack a jar for the command line interface -->
+    <jar jarfile="${dist}/sudoku.jar" basedir="${build}">
+      <manifest>
+        <attribute name="Main-Class" value="SudokuTools"/>
+      </manifest>
+
+      <zipfileset src="${lib}/cloning-1.8.5/cloning-1.8.5.jar"/>
+      <zipfileset src="${lib}/objenesis-tck-1.2.jar"/>
+    </jar>
+
+    <!-- Pack a jar for the gui -->
+    <jar jarfile="${dist}/sudoku_gui.jar" basedir="${build}">
+      <manifest>
+        <attribute name="Main-Class" value="gui/SudokuSolver"/>
+      </manifest>
+
+      <zipfileset src="${lib}/cloning-1.8.5/cloning-1.8.5.jar"/>
+      <zipfileset src="${lib}/objenesis-tck-1.2.jar"/>
+    </jar>
+
+    <!-- Remove the build directory as the classes are not needed anymore -->
+    <delete dir="${build}" />
+  </target>
+
+  <target name="clean" description="remove previous builds">
+    <delete dir="${dist}"/>
+  </target>
+</project>
