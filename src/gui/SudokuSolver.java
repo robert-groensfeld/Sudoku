@@ -137,6 +137,7 @@ public class SudokuSolver extends JFrame {
 		inputBoard = new Board();
 		gbc.gridy++;
 		this.add(inputBoard, gbc);
+		inputBoard.alter(Generator.generateInstance());
 		
 		outputBoard = new Board();
 		gbc.gridx++;
