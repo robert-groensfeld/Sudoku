@@ -79,9 +79,9 @@ public class SudokuTools {
 				System.out.println("\nInvalid Sudoku. " + solutions + " solutions found.");
 		}
 		else if(args[0].equals("-g"))
-			SudokuPrinter.print(Generator.generateInstance());
+			SudokuPrinter.print(Generator.generatePuzzle());
 		else if(args[0].equals("-gs"))
-			SudokuPrinter.printShort(Generator.generateInstance());
+			SudokuPrinter.printShort(Generator.generatePuzzle());
 		else if(args[0].equals("-r"))
 			generateRating(SudokuIO.loadSudoku(new File(args[1])));
 		else if(args[0].equals("-rs"))
