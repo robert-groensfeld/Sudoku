@@ -33,7 +33,7 @@ public class Generator {
 	private static int[][] instance = new int[9][9];
 	private static Stack<Position> givenPositions = new Stack<Position>();
 	
-	public static int[][] generateInstance() {
+	public static int[][] generatePuzzle() {
 		generateSolution();
 		placeValues(40);
 		SudokuProblem problem = new SudokuProblem(instance);

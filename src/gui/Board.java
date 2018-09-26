@@ -185,13 +185,13 @@ public class Board extends JPanel {
 	}
 	
 	/**
-	 * Alters this board according to the provided integer array.
-	 * @param newInstance A 9x9 integer array with values from 0 to 9, 0
+	 * Fills the board with the given values.
+	 * @param values A 9x9 integer array with values from 0 to 9, 0
 	 * meaning that the cell at the according position should be left empty.
 	 */
-	public void alter(int[][] newInstance) {
+	public void fill(int[][] values) {
 		for(int row = 0; row < 9; row++)
 			for(int col = 0; col < 9; col++)
-				cells[row][col].setValue(newInstance[row][col]);
+				cells[row][col].setValue(values[row][col]);
 	}
 }

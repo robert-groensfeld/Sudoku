@@ -25,6 +25,8 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import javax.swing.UIManager;
+import javax.swing.SwingUtilities;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -37,6 +39,7 @@ import utile.SudokuIO;
 
 /**
  * A window that provides functionality to solve Sudoku instances.
+ * 
  * @author robert
  *
  */
@@ -44,115 +47,105 @@ import utile.SudokuIO;
 public class SudokuSolver extends JFrame {
 
 	public static void main(String[] args) {
-		new SudokuSolver().setVisible(true);
+		SudokuSolver solver = new SudokuSolver();
+
+		try {
+			String laf = UIManager.getCrossPlatformLookAndFeelClassName();
+			UIManager.setLookAndFeel(laf);
+			SwingUtilities.updateComponentTreeUI(solver);
+		} catch (Exception e) {}
+
+		solver.setVisible(true);
 	}
 
 	private Board inputBoard;
-	private Board outputBoard;
 	private JButton solveButton;
 	private JButton loadButton;
 	private JButton clearButton;
-	private JButton generateButton;
 	private JButton rateButton;
-	private JLabel solverLabel;
 	private JLabel statusArea;
 	String lastPath = "";
-	
+
 	private ActionListener loader = new ActionListener() {
-		
+
 		@Override
 		public void actionPerformed(ActionEvent arg0) {
 			JFileChooser openDialog;
-			if(lastPath.equals(""))
+			if (lastPath.equals(""))
 				openDialog = new JFileChooser();
 			else
 				openDialog = new JFileChooser(lastPath);
 			int state = openDialog.showOpenDialog(getMainFrame());
-			if(state == JFileChooser.APPROVE_OPTION) {
+			if (state == JFileChooser.APPROVE_OPTION) {
 				File file = openDialog.getSelectedFile();
 				int[][] sudoku = SudokuIO.loadSudoku(file);
-				inputBoard.alter(sudoku);
+				inputBoard.fill(sudoku);
 				lastPath = file.getParent();
 			}
 		}
 	};
-	
+
 	private ActionListener solver = new ActionListener() {
-		
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			long start = System.currentTimeMillis();
 			SudokuProblem sp = new SudokuProblem(inputBoard.toIntArray());
 			long time = System.currentTimeMillis() - start;
-			outputBoard.alter(sp.getSolution());
-			solverLabel.setText("The solver found " + sp.getNumberOfSolutions() + " solutions.");
-			statusArea.setText("Sudoku solved. Time: " + time + "ms.");
+			inputBoard.fill(sp.getSolution());
+			int count = sp.getNumberOfSolutions();
+			if (count == 1)
+				statusArea.setText("Solution found.");
+			else if (count == 0)
+				statusArea.setText("Unable to complete: illegal user input.");
+			else if (count > 1)
+				statusArea.setText("This puzzle has more than one solution.");
 		}
 	};
-	
+
 	private ActionListener clearer = new ActionListener() {
-		
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			inputBoard.alter(new int[9][9]);
+			for (Cell[] row : inputBoard.cells) {
+				for (Cell cell : row) {
+					if (!cell.isOccupied()) {
+						cell.setValue(0);
+					}
+				}
+			}
 		}
 	};
-	
-	private ActionListener generator = new ActionListener() {
-		
-		@Override
-		public void actionPerformed(ActionEvent e) {
-			long start = System.currentTimeMillis();
-			inputBoard.alter(Generator.generateInstance());
-			long time = System.currentTimeMillis() - start;
-			statusArea.setText("Puzzle generated. Time: " + time + "ms.");
-		}
-	};
-	
+
 	private ActionListener rater = new ActionListener() {
-		
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			long start = System.currentTimeMillis();
-			Rater r = new Rater(inputBoard.toIntArray());
-			long time = System.currentTimeMillis() - start;
-			statusArea.setText("Puzzle rated. Time: " + time + "ms. Refutation sum: " + r.getRefutationSum() + ". Dependency: " + r.getDependencyMetric() + ". Estimated solve time: " + r.getEstimatedTime() + ".");
+			Rater rater = new Rater(inputBoard.toIntArray());
+			int time = rater.getEstimatedTime();
+			statusArea.setText("Time to solve: ca. " + time + " minutes.");
 		}
 	};
-	
+
 	public SudokuSolver() {
-		this.setTitle("Sudoku solver");
+		this.setTitle("Sudoku Tools");
 		this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		
 		this.setLayout(new GridBagLayout());
 		GridBagConstraints gbc = new GridBagConstraints();
 		gbc.gridx = 0;
 		gbc.gridy = 0;
 		
-		this.add(new JLabel("Sudoku instance:"), gbc);
-		gbc.gridx++;
-		solverLabel = new JLabel("Solution:");
-		this.add(solverLabel);
-
-		gbc.gridx--;
-		inputBoard = new Board(Generator.generateInstance());
-		gbc.gridy++;
+		inputBoard = new Board(Generator.generatePuzzle());
 		this.add(inputBoard, gbc);
-		
-		outputBoard = new Board();
-		gbc.gridx++;
-		this.add(outputBoard, gbc);
 		
 		statusArea = new JLabel("- ~ -");
 		JPanel statusPanel = new JPanel();
 		statusPanel.setLayout(new FlowLayout());
 		gbc.gridy++;
-		gbc.gridx--;
-		gbc.gridwidth = 2;
 		statusPanel.add(statusArea);
 		this.add(statusPanel, gbc);
 		
 		JPanel buttons = new JPanel();
 		buttons.setLayout(new FlowLayout());
+
 		loadButton = new JButton("load");
 		buttons.add(loadButton);
 		
@@ -162,25 +155,20 @@ public class SudokuSolver extends JFrame {
 		clearButton = new JButton("clear");
 		buttons.add(clearButton);
 		
-		generateButton = new JButton("generate");
-		buttons.add(generateButton);
-		
 		rateButton = new JButton("rate");
 		buttons.add(rateButton);
 		
 		gbc.gridy++;
-		//gbc.gridwidth = 3;
 		this.add(buttons, gbc);
 		
 		solveButton.addActionListener(solver);
 		loadButton.addActionListener(loader);
 		clearButton.addActionListener(clearer);
-		generateButton.addActionListener(generator);
 		rateButton.addActionListener(rater);
-
+		
 		this.pack();
 	}
-	
+
 	private SudokuSolver getMainFrame() {
 		return this;
 	}
