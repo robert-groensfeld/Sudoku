@@ -60,13 +60,13 @@ class CellListener implements FocusListener, KeyListener {
 		// corresponding cell.
 		if(keyCode >= 49 && keyCode <= 57) {
 			int cellValue = keyCode - 48;
-			if(!correspondingCell.isOccupied())
+			if(!correspondingCell.isEditable())
 				correspondingCell.setText(Integer.toString(cellValue));
 		}
 		
 		// Remove a value from the cell if [delete] or [return] are pressed
 		if(keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_BACK_SPACE)
-			if(!correspondingCell.isOccupied())
+			if(!correspondingCell.isEditable())
 				correspondingCell.setText("");
 	}
 
