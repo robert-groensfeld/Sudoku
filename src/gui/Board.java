@@ -27,155 +27,110 @@ import javax.swing.border.MatteBorder;
 
 /**
  * A typical 9x9 Sudoku board that contains 81 cells grouped in nine 3x3 blocks.
- * @author robert
- *
+ * @author Robert Grönsfeld
  */
 @SuppressWarnings("serial")
 public class Board extends JPanel {
 
 	protected Cell[][] cells;
-	private Color borderColor = Color.BLACK; // Default color is black.
-	// Border 'strength'
-	final int thinborder = 1;
-	final int thickborder = 3;
-	
-	/** Creates a completely empty board with default look. */
-	public Board() {
-		initCells(new CellFactory());
-		addCells();
-		drawBorders();
-	}
-	
+
+	private CellFactory factory;
+	private BoardStyle style;
+
 	/**
-	 * Creates a board with given values using the default look.
-	 * @param givenValues A two dimensional array with given values. The array
-	 * should be a 9x9 grid with values in the range of 0..9, 0 meaning that
-	 * at this point of the grid no value is given. The first index of the array
-	 * denotes the row, the second index the column of its value.
+	 * Creates an empty Sudoku board.
+	 * @throws Exception Unable to create board due to an internal error.
 	 */
-	public Board(int[][] givenValues) {
-		CellFactory freeCellFactory = new CellFactory();
-		freeCellFactory.setFontColor(Color.GRAY);
-		CellFactory givenCellFactory = new CellFactory();
-		givenCellFactory.setFontColor(Color.BLACK);
-		
-		initCells(givenValues, freeCellFactory, givenCellFactory);
-		addCells();
-		drawBorders();
+	protected Board() throws Exception {
+		this(new int[9][9]);
 	}
 
 	/**
-	 * Create a customized empty board. The appearance of the cells is
-	 * determined by the provided cell factory.
-	 * @param factory A cell factory that determines the appearance of the
-	 * cells.
-	 * @param borderColor The color of the border around the cells and between
-	 * blocks.
+	 * Creates a new Sudoku board with the default look.
+	 * @param puzzle A row x column array with numbers from 0 to 9, 0 
+	 * representing empty cells.
+	 * @throws Exception A board could not be created from the given puzzle.
 	 */
-	public Board(CellFactory factory, Color borderColor) {
-		this.borderColor = borderColor;
-		initCells(factory);
-		addCells();
-		drawBorders();
+	protected Board(int[][] puzzle) throws Exception {
+		this(puzzle, new CellFactory(), new BoardStyle());
 	}
 	
 	/**
-	 * Create a board with given values using a custom look.
-	 * @param givenValues The given values. For a more detailed description
-	 * see {@link Board#Board(int[][])}.
-	 * @param occupiedCellFactory A cell factory that determines the look of
-	 * occupied cells (the player should be able to distinguish between variable
-	 * and given cells).
-	 * @param emptyCellFactory A cell factory that determines the look of
-	 * variable cells.
-	 * @param borderColor The color of the borders between cells and blocks.
+	 * Creates a new Sudoku board with a custom look.
+	 * @param puzzle A 9 x 9, row x column Sudoku puzzle with cell values from 0 
+	 * to 9, 0 representing empty cells.
+	 * @param factory A factory creating cells with the desired style.
+	 * @param style The style of this board.
+	 * @throws Exception A cell could not be created.
 	 */
-	public Board(
-			int[][] givenValues, CellFactory occupiedCellFactory, 
-			CellFactory emptyCellFactory, Color borderColor) {
-		this.borderColor = borderColor;
-		initCells(givenValues, emptyCellFactory, occupiedCellFactory);
-		addCells();
-		drawBorders();
-	}
+	protected Board(int[][] puzzle, CellFactory factory, BoardStyle style)
+	throws Exception {
+		this.factory = factory;
+		this.style = style;
 
-	private void initCells(CellFactory factory) {
-		cells = new Cell[9][9];
-		for(int row = 0; row < 9; row++)
-			for(int col = 0; col < 9; col++)
-				cells[row][col] = factory.createCell(row, col);
-	}
-	
-	private void initCells(
-			int[][] values, CellFactory free, CellFactory given) {
-		cells = new Cell[9][9];
-		for(int row = 0; row < 9; row++)
-			for(int col = 0; col < 9; col++) {
-				if(values[row][col] == 0)
-					cells[row][col] = free.createCell(row, col);
-				else
-					cells[row][col] = 
-						given.createCell(row, col, values[row][col]);
-			}
-	}
-	
-	private void addCells() {
 		this.setLayout(new GridBagLayout());
 		GridBagConstraints constraints = new GridBagConstraints();
+
+		cells = new Cell[9][9];
 		for(int row = 0; row < 9; row++)
 			for(int col = 0; col < 9; col++) {
+				int value = puzzle[row][col];
+
+				if (value == 0)
+					cells[row][col] = factory.createCell(row, col);
+				else
+					try {
+						cells[row][col] = factory.createCell(row, col, value);
+					} catch (Exception e) {
+						throw new Exception("Unable to create a cell", e);
+					}
+
+				cells[row][col].setBorder(style.getBorder(cells[row][col]));
+
 				constraints.gridx = col;
 				constraints.gridy = row;
 				this.add(cells[row][col], constraints);
 			}
 	}
 
-	private void drawBorders() {
-		for(int row = 0; row < 9; row++)
-			for(int col = 0; col < 9; col++) {
-				Cell currentCell = cells[row][col];
-				MatteBorder currentBorder = getBorder(row, col);
-				currentCell.setBorder(currentBorder);
+	/**
+	 * Overwrite this board with a new Sudoku puzzle.
+	 * @param puzzle A 9 x 9, row x column Sudoku puzzle containing values from
+	 * 0 to 9, 0 representing empty cells.
+	 * @throws Exception The puzzle contains invalid values.
+	 */
+	protected void setPuzzle(int[][] puzzle) throws Exception {
+		for (int row = 0; row < 9; ++row)
+			for (int col = 0; col < 9; ++col) {
+				cells[row][col].clear();
+				try {
+					if (puzzle[row][col] != 0)
+						cells[row][col].occupy(puzzle[row][col]);
+				} catch (Exception e) {
+					throw new Exception("Malformed puzzle", e);
+				}
+				factory.getStyle(cells[row][col]).apply(cells[row][col]);
 			}
+	}
+
+	/**
+	 * Gets the puzzle within this board.
+	 * @return The board as 9 x 9, row x column array of numbers, 0 representing
+	 * empty cells.
+	 */
+	protected int[][] getPuzzle() {
+		int[][] puzzle = new int[9][9];
+		for (int row = 0; row < 9; ++row)
+			for (int col = 0; col < 9; ++col)
+				if (cells[row][col].isOccupied())
+					puzzle[row][col] = cells[row][col].getValue();
+		return puzzle;
 	}
 	
 	/**
-	 * Determine the border of a cell based on its position in the grid.
-	 * @param row Row of the cell (starting with 0).
-	 * @param column Column of the cell (starting with 0).
-	 * @return A fitting border for the cell at the specified position.
+	 * Converts this board to a 2D row x column integer array.
+	 * @return An array containing the cell values. 0 represents an empty cell.
 	 */
-	private MatteBorder getBorder(int row, int column) {
-		
-		int top = thinborder;
-		int bottom = thinborder;
-		int left = thinborder;
-		int right = thinborder;
-		
-		if(row % 3 == 0) // top border and horizontal block borders
-			top = thickborder;
-		if(row == 8) // bottom border
-			bottom = thickborder;
-		if(column % 3 == 0) // left border and vertical block borders
-			left = thickborder;
-		if(column == 8) // right border
-			right = thickborder;
-
-		return BorderFactory.createMatteBorder(
-				top, left, bottom, right, borderColor);
-	}
-	
-	public Dimension getPreferredSize() {
-		Cell arbitraryCell = cells[0][0];
-		Dimension cellDimension = arbitraryCell.getPreferredSize();
-		int cellSize = cellDimension.width;
-		int boardSize =
-				cellSize * 9 +		// nine cells in a row/column
-				4 * thickborder +	// four thick borders
-				6 * thinborder;		// six thin borders (1px)
-		return new Dimension(boardSize, boardSize);
-	}
-	
 	public int[][] toIntArray() {
 		int[][] board = new int[9][9];
 		for(int row = 0; row < 9; row++)
@@ -183,15 +138,26 @@ public class Board extends JPanel {
 				board[row][col] = cells[row][col].getValue();
 		return board;
 	}
-	
+
 	/**
-	 * Fills the board with the given values.
-	 * @param values A 9x9 integer array with values from 0 to 9, 0
-	 * meaning that the cell at the according position should be left empty.
+	 * Fills remaining empty cells with the solution of the puzzle.
+	 * @param solution A solution for the puzzle in this board.
+	 * @throws Exception The solution contains invalid values.
 	 */
-	public void fill(int[][] values) {
-		for(int row = 0; row < 9; row++)
-			for(int col = 0; col < 9; col++)
-				cells[row][col].setValue(values[row][col]);
+	protected void solve(int[][] solution) throws Exception {
+		for (int row = 0; row < 9; ++row)
+			for (int col = 0; col < 9; ++col)
+				if (!cells[row][col].isOccupied())
+					try {
+						cells[row][col].setValue(solution[row][col]);
+					} catch (Exception e) {
+						throw new Exception("Malformed solution", e);
+					}
+	}
+	
+	@Override
+	public Dimension getPreferredSize() {
+		Cell arbitraryCell = cells[0][0];
+		return style.getBoardSize(arbitraryCell);
 	}
 }
