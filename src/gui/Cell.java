@@ -23,7 +23,6 @@ import javax.swing.JTextField;
  * Represents a cell on a standard 9x9 Sudoku board. Cells can contain values
  * from 1 to 9. A cell is either editable or occupied with a given value.
  * @author robert
- *
  */
 @SuppressWarnings("serial")
 class Cell extends JTextField {
@@ -41,66 +40,87 @@ class Cell extends JTextField {
 		this.col = column;
 		this.occupied = false;
 		
-		// The standard input behavior is overridden by CellListener, which
-		// implements a key listener.
+		// Override the standard input behavior.
 		this.setEditable(false);
 	}
 	
 	/**
-	 * Creates a non-editable cell with a given value.
+	 * Creates a non-editable puzzle cell with a given value.
 	 * @param row The row of this cell.
 	 * @param column The column of this cell.
 	 * @param value The given value.
-	 * @throws Exception Throws an exception when the given value does not lie
-	 * in the range of 1 to 9.
+	 * @throws Exception The given value is not a number between 1 and 9.
 	 */
 	protected Cell(int row, int column, int value) throws Exception {
-		this.row = row;
-		this.col = column;
-		this.occupied = true;
-		if(value >= 1 && value <= 9)
-			this.setText(Integer.toString(value));
-		else
-			throw new Exception("Only values from 1 to 9 allowed as given");
-		
-		// The standard input behavior is overridden by CellListener, which
-		// implements a key listener.
-		this.setEditable(false);
+		this(row, column);
+		this.occupy(value);
 	}
 
 	/**
-	 * Use this method to determine whether this cell is occupied with a given
-	 * value or editable.
-	 * @return {@code true} if the cell contains a given value and 
-	 * {@code false} if the cell is editable.
+	 * Determines whether the cell contains a puzzle value or is editable.
+	 * @return {@code true} for puzzle cells, {@code false} for editable cells.
 	 */
 	public boolean isOccupied() {
-		return occupied;
+		return this.occupied;
+	}
+
+	/**
+	 * Occupies this cell with a value belonging to the Sudoku puzzle.
+	 * @param value A value from between 1 and 9.
+	 * @throws Exception The given value is invalid.
+	 */
+	public void occupy(int value) throws Exception {
+		this.setValue(value);
+		this.occupied = true;
+	}
+
+	/** Makes the cell editable. */
+	public void makeEditable() {
+		this.occupied = false;
 	}
 	
 	/**
 	 * Returns the value of this cell.
-	 * @return {@code 0}, if the cell does not contain a value.
+	 * @return The value of the cell or 0 if the cell is empty.
 	 */
 	public int getValue() {
-		String text = this.getText();
-		if(text.equals(""))
+		if (this.isEmpty())
 			return 0;
 		else
-			return Integer.parseInt(text);
+			return Integer.parseInt(this.getText());
+	}
+
+	/**
+	 * Determines if this cell contains a value or is empty.
+	 * @return {@code true} for an empty cell, otherwise {@code false}
+	 */
+	public boolean isEmpty() {
+		return this.getText().equals("");
 	}
 	
 	/**
 	 * Alters the value of this cell.
-	 * @param value The new value of this cell. The cell will become empty, if
-	 * {@code 0} is provided. 
+	 * @param value A number  between 1 and 9.
+	 * @throws Exception This cell is occupied and its value can not be changed.
+ 	 * @throws Exception The given value is invalid.
 	 */
-	public void setValue(int value) {
-		if(value == 0)
-			this.setText("");
-		else {
-			String text = Integer.toString(value);
-			this.setText(text);
-		}
+	public void setValue(int value) throws Exception {
+		if (this.isOccupied())
+			throw new Exception("Value of puzzle cell " + this + " immutable.");
+		else if (1 <= value && value <= 9)
+			this.setText(Integer.toString(value));
+		else
+			throw new Exception(value + " invalid value for cell " + this);
+	}
+
+	/** Removes the value of this cell. */
+	public void clear() {
+		this.setText("");
+		this.occupied = false;
+	}
+
+	@Override
+	public String toString() {
+		return "{row: " + row + ", col: " + col + "}";
 	}
 }

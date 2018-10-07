@@ -21,6 +21,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 
+import javax.lang.model.util.ElementScanner6;
+
 /**
  * Factory class to create cells of a standard 9x9 Sudoku board. Provides
  * methods to customize the look of cells and attaches listeners to them.
@@ -28,20 +30,42 @@ import java.awt.Font;
  *
  */
 class CellFactory {
-	
-	// STANDARD CELL LOOK /////////////////////////////////////////////////////
 
-	private int size = 40;
-	private final int minSize = 20;
+	/** Styles for editable, fixed and focused cells. */
+	CellStyle editable, fixed, focused;
+
+	/** Creates a cell factory producing cells with the standard look. */
+	protected CellFactory() {
+		CellStyle editable = new CellStyle();
+		editable.setFontColor(Color.GRAY);
+
+		CellStyle fixed = new CellStyle();
+
+		CellStyle focused = new CellStyle();
+		focused.setBackgroundColor(Color.LIGHT_GRAY);
+		focused.setFontColor(Color.GRAY);
+
+		init(editable, fixed, focused);
+	}
 	
-	private Color notFocused = Color.WHITE;
-	private Color focused = Color.LIGHT_GRAY;
-	
-	private Font font = new Font("Monospaced", Font.PLAIN, size);
-	private Color fontColor = Color.BLACK;
-	
-	///////////////////////////////////////////////////////////////////////////
-	
+	/**
+	 * Creates a cell factory producing cells with the given styles.
+	 * @param editable Style of an initially blank, user editable cell.
+	 * @param fixed Style of a cell with a number belonging to the puzzle. 
+	 * @param focused Style of a cell that is focused by the user.
+	 */
+	protected CellFactory(CellStyle editable, 
+						  CellStyle fixed, 
+						  CellStyle focused) {
+		init(editable, fixed, focused);
+	}
+
+	private void init(CellStyle editable, CellStyle fixed, CellStyle focused) {
+		this.editable = editable;
+		this.fixed = fixed;
+		this.focused = focused;
+	}
+
 	/**
 	 * Creates a new editable cell. 
 	 * @param row The row of the cell.
@@ -50,7 +74,8 @@ class CellFactory {
 	 */
 	protected Cell createCell(int row, int column) {
 		Cell cell = new Cell(row, column);
-		decorateCell(cell);
+		getStyle(cell).apply(cell);
+		addListeners(cell);
 		return cell;
 	}
 	
@@ -59,81 +84,31 @@ class CellFactory {
 	 * @param row The row of this cell.
 	 * @param column The column of this cell.
 	 * @param value The given value. Has to be a value within the range 1..9.
+	 * @throws Exception The puzzle cell could not be created.
 	 * @return A cell that contains the given value and is not editable.
 	 */
-	protected Cell createCell(int row, int column, int value) {
+	protected Cell createCell(int row, int column, int value) throws Exception {
 		try {
 			Cell cell = new Cell(row, column, value);
-			decorateCell(cell);
+			getStyle(cell).apply(cell);
+			addListeners(cell); 
 			return cell;
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(0);
+		} catch (Exception cause) {
+			String message = "Unable to create puzzle cell";
+			throw new Exception(message, cause);
 		}
-		
-		// GOD FORBID THIS LINE IS EVER REACHED
-		return new Cell(row, column);
 	}
 	
-	private void decorateCell(Cell cell) {
-		Dimension cellSize = new Dimension(size, size);
-		cell.setPreferredSize(cellSize);
-		Dimension minimalSize = new Dimension(minSize, minSize);
-		cell.setMinimumSize(minimalSize);
-		
-		cell.setBackground(notFocused);
-		cell.setFont(font);
-		cell.setHorizontalAlignment(Cell.CENTER);
-		cell.setForeground(fontColor);
-		
-		CellListener listener = new CellListener(focused, notFocused);
-		cell.addFocusListener(listener);
-		cell.addKeyListener(listener);
+	private void addListeners(Cell cell) {
+		cell.addFocusListener(new CellFocusListener(focused, editable));
+		cell.addKeyListener(new CellKeyListener());
 	}
-	
-	
-	/**
-	 * Change the preferred size of the cells.
-	 * @param newSize The new size. It has to be greater than the minimal cell
-	 * size determined by this factory (20).
-	 */
-	public void setSize(int newSize) {
-		if(newSize >= minSize)
-			size = newSize;
-	}
-	
-	/**
-	 * Select a new background color for the cells that are to be created. 
-	 * @param bgColor The new background color.
-	 */
-	protected void setBgColor(Color bgColor) {
-		notFocused = bgColor;
-	}
-	
-	/**
-	 * The background color of a cell changes if it gains focus. Use this
-	 * method to determine the background color under focus.
-	 * @param focusColor The background color of a focused cell.
-	 */
-	protected void setFocusColor(Color focusColor) {
-		focused = focusColor;
-	}
-	
-	/**
-	 * Change the font of the cells that are to be created.
-	 * @param newFont The new font. The point size has to be smaller than the
-	 * cell size.
-	 */
-	protected void setFont(Font newFont) {
-		if(newFont.getSize() <= size)
-			font = newFont;
-	}
-	
-	/**
-	 * Select a new font color.
-	 * @param newColor The new font color.
-	 */
-	protected void setFontColor(Color newColor) {
-		fontColor = newColor;
+
+	protected CellStyle getStyle(Cell cell) {
+		if (cell.isOccupied())
+			return fixed;
+		if (cell.isFocusOwner())
+			return focused;
+		return editable;
 	}
 }

@@ -35,6 +35,7 @@ import javax.swing.JPanel;
 
 import rating.Rater;
 import solver.SudokuProblem;
+import utile.ErrorFormatter;
 import utile.SudokuIO;
 
 /**
@@ -59,12 +60,28 @@ public class SudokuSolver extends JFrame {
 	}
 
 	private Board inputBoard;
+	private JButton generateButton;
 	private JButton solveButton;
 	private JButton loadButton;
+	private JButton saveButton;
 	private JButton clearButton;
 	private JButton rateButton;
 	private JLabel statusArea;
 	String lastPath = "";
+
+	private ActionListener generator = new ActionListener() {
+	
+		@Override
+		public void actionPerformed(ActionEvent event) {
+			try {
+				inputBoard.setPuzzle(Generator.generatePuzzle());
+			} catch (Exception internalError) {
+				statusArea.setText("Broken Sudoku generator. Contact vendor.");
+				ErrorFormatter formatter = new ErrorFormatter();
+				System.out.println(formatter.format(internalError));
+			}
+		}
+	};
 
 	private ActionListener loader = new ActionListener() {
 
@@ -79,7 +96,31 @@ public class SudokuSolver extends JFrame {
 			if (state == JFileChooser.APPROVE_OPTION) {
 				File file = openDialog.getSelectedFile();
 				int[][] sudoku = SudokuIO.loadSudoku(file);
-				inputBoard.fill(sudoku);
+				try {
+					inputBoard.setPuzzle(sudoku);
+				} catch (Exception e) {
+					ErrorFormatter formatter = new ErrorFormatter();
+					statusArea.setText(e.getMessage());
+					System.out.println(formatter.format(e));
+				}
+				lastPath = file.getParent();
+			}
+		}
+	};
+
+	private ActionListener saver = new ActionListener() {
+	
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			JFileChooser saveDialog;
+			if (lastPath.equals(""))
+				saveDialog = new JFileChooser();
+			else
+				saveDialog = new JFileChooser(lastPath);
+			int state = saveDialog.showSaveDialog(getMainFrame());
+			if (state == JFileChooser.APPROVE_OPTION) {
+				File file = saveDialog.getSelectedFile();
+				SudokuIO.saveSudoku(file, inputBoard.getPuzzle());
 				lastPath = file.getParent();
 			}
 		}
@@ -87,18 +128,23 @@ public class SudokuSolver extends JFrame {
 
 	private ActionListener solver = new ActionListener() {
 		@Override
-		public void actionPerformed(ActionEvent e) {
-			long start = System.currentTimeMillis();
-			SudokuProblem sp = new SudokuProblem(inputBoard.toIntArray());
-			long time = System.currentTimeMillis() - start;
-			inputBoard.fill(sp.getSolution());
-			int count = sp.getNumberOfSolutions();
-			if (count == 1)
-				statusArea.setText("Solution found.");
-			else if (count == 0)
-				statusArea.setText("Unable to complete: illegal user input.");
-			else if (count > 1)
-				statusArea.setText("This puzzle has more than one solution.");
+		public void actionPerformed(ActionEvent event) {
+			try {
+				SudokuProblem sp = new SudokuProblem(inputBoard.toIntArray());
+				if (sp.hasSolution())
+					inputBoard.solve(sp.getSolution());
+				int count = sp.getNumberOfSolutions();
+				if (count == 1)
+					statusArea.setText("Solution found.");
+				else if (count == 0)
+					statusArea.setText("Unable to solve: illegal user input.");
+				else if (count > 1)
+					statusArea.setText("Puzzle has more than one solution.");
+			} catch (Exception e) {
+				statusArea.setText("Broken solver. Contact the vendor.");
+				ErrorFormatter formatter = new ErrorFormatter();
+				System.out.println(formatter.format(e));
+			}
 		}
 	};
 
@@ -108,7 +154,7 @@ public class SudokuSolver extends JFrame {
 			for (Cell[] row : inputBoard.cells) {
 				for (Cell cell : row) {
 					if (!cell.isOccupied()) {
-						cell.setValue(0);
+						cell.clear();
 					}
 				}
 			}
@@ -132,11 +178,23 @@ public class SudokuSolver extends JFrame {
 		GridBagConstraints gbc = new GridBagConstraints();
 		gbc.gridx = 0;
 		gbc.gridy = 0;
+
+		statusArea = new JLabel("- ~ -");
 		
-		inputBoard = new Board(Generator.generatePuzzle());
+		try {
+			inputBoard = new Board(Generator.generatePuzzle());
+		} catch (Exception e) {
+			statusArea.setText("Broken Sudoku generator. Contact vendor.");
+			try {
+				inputBoard = new Board();
+			} catch (Exception internalError) {
+				ErrorFormatter formatter = new ErrorFormatter();
+				System.out.println(formatter.format(internalError));
+				System.exit(0);
+			}
+		}
 		this.add(inputBoard, gbc);
 		
-		statusArea = new JLabel("- ~ -");
 		JPanel statusPanel = new JPanel();
 		statusPanel.setLayout(new FlowLayout());
 		gbc.gridy++;
@@ -148,6 +206,12 @@ public class SudokuSolver extends JFrame {
 
 		loadButton = new JButton("load");
 		buttons.add(loadButton);
+
+		saveButton = new JButton("save");
+		buttons.add(saveButton);
+
+		generateButton = new JButton("new");
+		buttons.add(generateButton);
 		
 		solveButton = new JButton("solve");
 		buttons.add(solveButton);
@@ -162,7 +226,9 @@ public class SudokuSolver extends JFrame {
 		this.add(buttons, gbc);
 		
 		solveButton.addActionListener(solver);
+		generateButton.addActionListener(generator);
 		loadButton.addActionListener(loader);
+		saveButton.addActionListener(saver);
 		clearButton.addActionListener(clearer);
 		rateButton.addActionListener(rater);
 		
